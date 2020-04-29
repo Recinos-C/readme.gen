@@ -4,9 +4,11 @@ var inquirer = require("inquirer")
 var path = require("path")
 var util = require("util")
 var axios = require("axios")
-var writeToFile = util.promisify(fs.writeToFile)
+// problem area
+var writeToFile = util.promisify(fs.writeFile)
 // prompts user responses
-let promptUser = () => {
+const promptUser = () => {
+
     return inquirer.prompt([{
             type: "input",
             message: "what is your github username?",
@@ -52,14 +54,30 @@ let promptUser = () => {
         }
     ])
 }
+const checkuser = async (username) =>{
+    try {
+        return axios.get(`http://api.github.com/users/${username}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`)
+        .catch(function (error) {
+            // handle error
+            if(error.response.status == 404){
+                console.log("user does nit exist")
+            }
+        })
+    }
+    catch(err) {
+        return err;
+        // here there is an error, you can choose to handle this error as you'd like 
 
-promptUser();
-function init(){
+    }
+}
+async function init(){
     try { 
-        checkuser(username);
         const answers = await promptUser();
+        // console.log(answers);
+        // process.exit();
         const readMe = genReadMe(answers);
-        await writeToFile("README.md", readMe)
+        console.log(readMe)
+        await writeReadme("README.md", readMe)
     }catch (err){
         console.log(err)
     }
@@ -70,50 +88,32 @@ init();
 // used functions down here
 const genReadMe = (answers) => {
     return `
-    ------${answers.project}------
-    
-    Project license is ${makeBadge(answers.license, answers.username, answers.project)}
-
+    ------${ answers.project }------
+    Project license is ${makeBadge( answers.license, answers.username, answers.project )}
     -----Summary-----
-
     ${answers.summary}
-
     -----Installation------
-
     To install the item use the following command in node
     ${answers.install}
-
     ----Usage----
     ${answers.knowledge}
     ${answers.license}
-    
     ----Testing----
     To run any test please use the following
     ${answers.test}
-
     -----Contact-----
     For any inquiry into the project contact me at:
-
-
-
+    ${answers.username}
     `;
 }
-
-//    should check username responses responses
-function checkuser(username){
-return axios.get(`http://api.github.com/users/${username}?client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`)
-    .catch(err => {
-        return err;
-
-    })
-}
-
 function makeBadge(license,username,project){
-    return `Github license is: ([![GitHub](https://img.shields.io/github/license/${license}/?style=for-the-badge)](http://github.com/${username}/${project}))`
+    checkuser(username).then(function(license,username,project){
+        return `Github license is: ([![GitHub](https://img.shields.io/github/license/${license}/?style=for-the-badge)](http://github.com/${username}/${project}))`
+    }) 
 }
 
-function writeToFile(filename, answers ) {
-    return fs.writeToFileSync(path.join(process.cwd(), filename), answers)
+// -------------Possible ignore area----------
+function writeReadme(filename, answers) {
+    return writeToFile(path.join(process.cwd(), filename), answers)
 }
-
 // end used functions
